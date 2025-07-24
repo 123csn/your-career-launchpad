@@ -1,0 +1,160 @@
+/* General Styles */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navigation */
+.navbar-brand i {
+    color: #fff;
+}
+
+/* Hero Section */
+.hero {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+}
+
+/* Company Logo */
+.company-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Job Cards */
+.card {
+    transition: transform 0.2s ease-in-out;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.job-meta .badge {
+    margin-right: 0.5rem;
+}
+
+/* Features Section */
+.features i {
+    transition: transform 0.3s ease-in-out;
+}
+
+.features .col-md-4:hover i {
+    transform: scale(1.1);
+}
+
+/* Forms */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Social Links */
+.social-links a {
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 1.5rem;
+    transition: color 0.2s ease-in-out;
+}
+
+.social-links a:hover {
+    color: #0d6efd;
+}
+
+/* Dashboard Cards */
+.dashboard-stat {
+    padding: 1.5rem;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-stat i {
+    font-size: 2.5rem;
+    opacity: 0.8;
+}
+
+/* Profile Section */
+.profile-header {
+    background: #f8f9fa;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.profile-avatar {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 5px solid #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Job Application Status */
+.status-badge {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+}
+
+.status-pending {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.status-reviewed {
+    background-color: #17a2b8;
+    color: #fff;
+}
+
+.status-accepted {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.status-rejected {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero {
+        text-align: center;
+    }
+    
+    .hero img {
+        margin-top: 2rem;
+        max-width: 80%;
+    }
+    
+    .dashboard-stat {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+} 

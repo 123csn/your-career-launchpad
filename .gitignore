@@ -1,0 +1,55 @@
+# Configuration files with sensitive data
+config/database.php
+config/config.php
+
+# Uploaded files (user content)
+uploads/*
+!uploads/.gitkeep
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+
+# Database dumps (except the main one)
+database/*.sql
+!database/career_launchpad.sql
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Cache files
+cache/
+*.cache
+
+# Session files
+sessions/
+
+# Error logs
+error_log
+access_log 
