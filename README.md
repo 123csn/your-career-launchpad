@@ -206,6 +206,25 @@ If you have any questions or need help:
 - Font Awesome for icons
 - XAMPP for the development environment
 - All contributors and testers
+- My lecturer for guidance throughout this project
+- Fellow students for testing and feedback
+
+## 📝 Personal Notes
+
+This project was developed as part of my CP2 Capstone Project. I learned a lot about:
+- Full-stack web development with PHP and MySQL
+- User authentication and security best practices
+- Database design and optimization
+- Responsive web design with Bootstrap
+- Project management and documentation
+
+The development process took approximately [X] weeks, with challenges including:
+- Implementing secure user authentication
+- Designing an intuitive user interface
+- Optimizing database queries for performance
+- Ensuring cross-browser compatibility
+
+I'm particularly proud of the job recommendation system and the admin dashboard features.
 
 ---
 ⭐ **Star this repository if you find it helpful!** 

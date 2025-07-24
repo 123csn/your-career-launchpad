@@ -1,4 +1,15 @@
 <?php
+/**
+ * Career Launchpad - Main Homepage
+ * 
+ * This is the main entry point for the job portal application.
+ * I designed this page to showcase the latest jobs and provide
+ * easy navigation for both students and employers.
+ * 
+ * Student ID: 22019285
+ * CP2 Capstone Project
+ */
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
