@@ -7,9 +7,12 @@ A comprehensive job portal web application connecting students with employers. B
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.0+-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![Apache](https://img.shields.io/badge/Apache-2.4+-D22128?style=for-the-badge&logo=apache&logoColor=white)](https://httpd.apache.org)
 
-## 🌟 Live Demo
+## 🎓 Academic Project Information
 
-🔗 **Demo URL**: [Coming Soon]
+- **Course**: CP2 (Capstone Project 2)
+- **Student ID**: 22019285
+- **Project Type**: Web Application Development
+- **Technology Stack**: PHP, MySQL, Bootstrap 5
 
 ## 📸 Screenshots
 
@@ -178,9 +181,9 @@ career-launchpad/
 - ✅ File upload functionality
 - ✅ Security features (SQL injection prevention, XSS protection)
 
-## 🚀 Deployment
+## 🚀 Local Development Setup
 
-For deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)
+This project is designed to run locally using XAMPP. For deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 🤝 Contributing
 
