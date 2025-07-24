@@ -152,16 +152,12 @@ career-launchpad/
 ├── admin/              # Admin panel files
 ├── assets/             # Static files (CSS, JS, images)
 ├── config/             # Configuration files
-├── controllers/        # MVC Controllers
 ├── database/          # Database schema and migrations
 ├── employer/          # Employer-specific pages
 ├── includes/          # Reusable PHP components
 ├── jobs/              # Job-related pages
-├── models/            # MVC Models
 ├── student/           # Student-specific pages
-├── tests/             # Test files
 ├── uploads/           # User uploaded files
-├── views/             # MVC Views
 ├── .htaccess          # Apache configuration
 ├── .gitignore         # Git ignore rules
 ├── index.php          # Main entry point
@@ -183,7 +179,7 @@ career-launchpad/
 
 ## 🚀 Local Development Setup
 
-This project is designed to run locally using XAMPP. For deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)
+This project is designed to run locally using XAMPP. See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed installation instructions.
 
 ## 🤝 Contributing
 
