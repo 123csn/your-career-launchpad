@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_jobs'])) {
     $success = true;
 }
 
-// --- Stats Tab Data ---
+// --- Stats Data ---
 $totalUsers = $totalStudents = $totalEmployers = $totalJobs = $totalApplications = $totalFeedback = 0;
 // Users
 $stmt = $conn->query("SELECT COUNT(*) FROM users");
@@ -56,8 +56,11 @@ $totalStudents = $stmt->fetchColumn();
 $stmt = $conn->query("SELECT COUNT(*) FROM users WHERE role = 'employer'");
 $totalEmployers = $stmt->fetchColumn();
 // Jobs
-$stmt = $conn->query("SELECT COUNT(*) FROM job");
-$totalJobs = $stmt->fetchColumn();
+$stmt = $conn->query("SELECT COUNT(*) FROM job WHERE status = 'active'");
+$activeJobs = $stmt->fetchColumn();
+$stmt = $conn->query("SELECT COUNT(*) FROM job WHERE status = 'pending'");
+$pendingJobs = $stmt->fetchColumn();
+$totalJobs = $activeJobs + $pendingJobs;
 // Applications
 $stmt = $conn->query("SELECT COUNT(*) FROM applications");
 $totalApplications = $stmt->fetchColumn();
@@ -66,37 +69,68 @@ if (file_exists('../feedbacks.txt')) {
     $totalFeedback = count(file('../feedbacks.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
 }
 
-// --- Users Tab Data & Deletion ---
-$userDeleteMsg = '';
-if (isset($_POST['delete_user_id']) && is_numeric($_POST['delete_user_id'])) {
-    $deleteId = (int)$_POST['delete_user_id'];
-    if ($deleteId !== $_SESSION['user_id']) { // Prevent self-delete
-        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-        $stmt->execute([$deleteId]);
-        $userDeleteMsg = 'User deleted.';
+// --- Recent Activity Data ---
+$recentActivities = [];
+
+// Recent job postings
+$stmt = $conn->query("SELECT j.title, e.company_name, j.created_at FROM job j 
+                     INNER JOIN employer_profiles e ON j.employer_id = e.id 
+                     ORDER BY j.created_at DESC LIMIT 3");
+while ($row = $stmt->fetch()) {
+    $recentActivities[] = [
+        'type' => 'job',
+        'icon' => '📄',
+        'description' => 'New job posted: "' . $row['title'] . '"',
+        'details' => 'Company: ' . $row['company_name'],
+        'time' => date('j M Y H:i', strtotime($row['created_at']))
+    ];
+}
+
+// Recent user registrations
+$stmt = $conn->query("SELECT u.email, u.role, u.created_at FROM users u 
+                     ORDER BY u.created_at DESC LIMIT 3");
+while ($row = $stmt->fetch()) {
+    $recentActivities[] = [
+        'type' => 'user',
+        'icon' => '👤',
+        'description' => 'New user registered: ' . $row['email'],
+        'details' => 'Role: ' . ucfirst($row['role']),
+        'time' => date('j M Y H:i', strtotime($row['created_at']))
+    ];
+}
+
+// Recent feedback
+if (file_exists('../feedbacks.txt')) {
+    $lines = file('../feedbacks.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $feedbacks = [];
+    foreach ($lines as $line) {
+        $data = json_decode($line, true);
+        if ($data && isset($data['rating'], $data['date'])) {
+            $feedbacks[] = $data;
+        }
+    }
+    // Sort by date and take latest 3
+    usort($feedbacks, function($a, $b) {
+        return strtotime($b['date']) - strtotime($a['date']);
+    });
+    $feedbacks = array_slice($feedbacks, 0, 3);
+    
+    foreach ($feedbacks as $fb) {
+        $recentActivities[] = [
+            'type' => 'feedback',
+            'icon' => '⭐',
+            'description' => 'New feedback received: ' . $fb['rating'] . ' stars',
+            'details' => 'User: ' . (isset($fb['user']) ? $fb['user'] : 'Guest'),
+            'time' => $fb['date']
+        ];
     }
 }
-$users = $conn->query("SELECT u.id, u.email, u.role, s.first_name, s.last_name, e.company_name FROM users u
-    LEFT JOIN student_profiles s ON u.id = s.user_id
-    LEFT JOIN employer_profiles e ON u.id = e.user_id
-    ORDER BY u.role, u.id")->fetchAll();
 
-// --- Jobs Tab Data & Actions ---
-$jobMsg = '';
-if (isset($_POST['delete_job_id']) && is_numeric($_POST['delete_job_id'])) {
-    $jobId = (int)$_POST['delete_job_id'];
-    $stmt = $conn->prepare("DELETE FROM job WHERE id = ?");
-    $stmt->execute([$jobId]);
-    $jobMsg = 'Job deleted.';
-}
-if (isset($_POST['toggle_job_id']) && is_numeric($_POST['toggle_job_id']) && isset($_POST['new_status'])) {
-    $jobId = (int)$_POST['toggle_job_id'];
-    $newStatus = $_POST['new_status'] === 'active' ? 'active' : 'closed';
-    $stmt = $conn->prepare("UPDATE job SET status = ? WHERE id = ?");
-    $stmt->execute([$newStatus, $jobId]);
-    $jobMsg = 'Job status updated.';
-}
-$jobs = $conn->query("SELECT j.id, j.title, j.status, e.company_name FROM job j INNER JOIN employer_profiles e ON j.employer_id = e.id ORDER BY j.id DESC")->fetchAll();
+// Sort all activities by time (most recent first)
+usort($recentActivities, function($a, $b) {
+    return strtotime($b['time']) - strtotime($a['time']);
+});
+$recentActivities = array_slice($recentActivities, 0, 3);
 
 // --- Feedback Tab Data & Deletion ---
 $feedbackMsg = '';
@@ -149,203 +183,279 @@ if (!empty($userIds)) {
 
 include '../includes/header.php';
 ?>
+
+<style>
+.overview-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.overview-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.overview-card h3 {
+    color: #0d6efd;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.overview-card .stats {
+    margin-bottom: 1rem;
+}
+
+.overview-card .stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.overview-card .manage-btn {
+    background: #ffc107;
+    color: #000;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color 0.3s;
+}
+
+.overview-card .manage-btn:hover {
+    background: #ffb300;
+}
+
+.recent-activity {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+    margin-bottom: 2rem;
+}
+
+.recent-activity h3 {
+    color: #0d6efd;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    font-size: 1.5rem;
+    min-width: 2rem;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-description {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.activity-details {
+    color: #666;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.feedback-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.feedback-section h3 {
+    color: #0d6efd;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.feedback-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.feedback-card {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+}
+
+.feedback-rating {
+    margin-bottom: 0.5rem;
+}
+
+.feedback-text {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.feedback-meta {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.feedback-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .overview-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .feedback-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
 <div class="container py-5">
-    <h2 class="mb-4">Admin Dashboard</h2>
-    <ul class="nav nav-tabs mb-4" id="adminTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats" type="button" role="tab">Stats</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">Users</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="jobs-tab" data-bs-toggle="tab" data-bs-target="#jobs" type="button" role="tab">Jobs</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="feedback-tab" data-bs-toggle="tab" data-bs-target="#feedback" type="button" role="tab">Feedback</button>
-        </li>
-    </ul>
-    <div class="tab-content" id="adminTabContent">
-        <div class="tab-pane fade show active" id="stats" role="tabpanel">
-            <div class="row g-4 mb-4">
-                <div class="col-md-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="card-title">Total Users</h5>
-                            <h2><?php echo $totalUsers; ?></h2>
-                            <div class="text-muted">Students: <?php echo $totalStudents; ?> | Employers: <?php echo $totalEmployers; ?></div>
-                        </div>
-                    </div>
+    <!-- Overview Cards -->
+    <div class="overview-cards">
+        <div class="overview-card">
+            <h3><i class="fas fa-chart-bar"></i>System Stats</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <span>Total Users:</span>
+                    <span><?php echo $totalUsers; ?></span>
                 </div>
-                <div class="col-md-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="card-title">Total Jobs</h5>
-                            <h2><?php echo $totalJobs; ?></h2>
-                        </div>
-                    </div>
+                <div class="stat-item">
+                    <span>Active Jobs:</span>
+                    <span><?php echo $activeJobs; ?></span>
                 </div>
-                <div class="col-md-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="card-title">Total Applications</h5>
-                            <h2><?php echo $totalApplications; ?></h2>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="card-title">Total Feedback</h5>
-                            <h2><?php echo $totalFeedback; ?></h2>
-                        </div>
-                    </div>
+                <div class="stat-item">
+                    <span>Applications:</span>
+                    <span><?php echo $totalApplications; ?></span>
                 </div>
             </div>
         </div>
-        <div class="tab-pane fade" id="users" role="tabpanel">
-            <?php if ($userDeleteMsg): ?>
-                <div class="alert alert-success"><?php echo $userDeleteMsg; ?></div>
-            <?php endif; ?>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Role</th>
-                            <th>Name / Company</th>
-                            <th>Email</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($users as $user): ?>
-                            <tr>
-                                <td><?php echo $user['id']; ?></td>
-                                <td><?php echo ucfirst($user['role']); ?></td>
-                                <td>
-                                    <?php
-                                    if ($user['role'] === 'student') {
-                                        echo htmlspecialchars(trim($user['first_name'] . ' ' . $user['last_name']));
-                                    } elseif ($user['role'] === 'employer') {
-                                        echo htmlspecialchars($user['company_name']);
-                                    } else {
-                                        echo '-';
-                                    }
-                                    ?>
-                                </td>
-                                <td><?php echo htmlspecialchars($user['email']); ?></td>
-                                <td>
-                                    <?php if ($user['id'] !== $_SESSION['user_id']): ?>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this user?');">
-                                            <input type="hidden" name="delete_user_id" value="<?php echo $user['id']; ?>">
-                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                        </form>
-                                    <?php else: ?>
-                                        <span class="text-muted">(You)</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+
+        <div class="overview-card">
+            <h3><i class="fas fa-users"></i>Users</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <span>Students:</span>
+                    <span><?php echo $totalStudents; ?></span>
+                </div>
+                <div class="stat-item">
+                    <span>Employers:</span>
+                    <span><?php echo $totalEmployers; ?></span>
+                </div>
             </div>
+            <a href="<?php echo BASE_URL; ?>/admin/manage-users.php" class="manage-btn" style="text-decoration: none; display: block; text-align: center;">Manage</a>
         </div>
-        <div class="tab-pane fade" id="jobs" role="tabpanel">
-            <?php if ($jobMsg): ?>
-                <div class="alert alert-success"><?php echo $jobMsg; ?></div>
-            <?php endif; ?>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Title</th>
-                            <th>Company</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($jobs as $job): ?>
-                            <tr>
-                                <td><?php echo $job['id']; ?></td>
-                                <td><?php echo htmlspecialchars($job['title']); ?></td>
-                                <td><?php echo htmlspecialchars($job['company_name']); ?></td>
-                                <td>
-                                    <span class="badge bg-<?php echo $job['status'] === 'active' ? 'success' : 'secondary'; ?>">
-                                        <?php echo ucfirst($job['status']); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <form method="POST" style="display:inline;">
-                                        <input type="hidden" name="toggle_job_id" value="<?php echo $job['id']; ?>">
-                                        <input type="hidden" name="new_status" value="<?php echo $job['status'] === 'active' ? 'closed' : 'active'; ?>">
-                                        <button type="submit" class="btn btn-sm btn-outline-<?php echo $job['status'] === 'active' ? 'secondary' : 'success'; ?>">
-                                            <?php echo $job['status'] === 'active' ? 'Close' : 'Reactivate'; ?>
-                                        </button>
-                                    </form>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this job?');">
-                                        <input type="hidden" name="delete_job_id" value="<?php echo $job['id']; ?>">
-                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+
+        <div class="overview-card">
+            <h3><i class="fas fa-briefcase"></i>Jobs</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <span>Active:</span>
+                    <span><?php echo $activeJobs; ?></span>
+                </div>
+                <div class="stat-item">
+                    <span>Pending:</span>
+                    <span><?php echo $pendingJobs; ?></span>
+                </div>
             </div>
-            <form method="POST" class="mt-4">
-                <button type="submit" name="generate_jobs" class="btn btn-primary btn-lg">Generate Test Jobs</button>
-            </form>
-            <?php if ($success): ?>
-                <div class="alert alert-success mt-3">20 test jobs have been generated and added to the database.</div>
-            <?php endif; ?>
+            <a href="<?php echo BASE_URL; ?>/admin/manage-jobs.php" class="manage-btn" style="text-decoration: none; display: block; text-align: center;">Manage</a>
         </div>
-        <div class="tab-pane fade" id="feedback" role="tabpanel">
-            <?php if ($feedbackMsg): ?>
-                <div class="alert alert-success"><?php echo $feedbackMsg; ?></div>
-            <?php endif; ?>
-            <div class="row g-3">
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="recent-activity">
+        <h3>Recent Activity</h3>
+        <?php if (empty($recentActivities)): ?>
+            <p class="text-muted">No recent activity</p>
+        <?php else: ?>
+            <?php foreach ($recentActivities as $activity): ?>
+                <div class="activity-item">
+                    <div class="activity-icon"><?php echo $activity['icon']; ?></div>
+                    <div class="activity-content">
+                        <div class="activity-description"><?php echo htmlspecialchars($activity['description']); ?></div>
+                        <div class="activity-details">
+                            <i class="fas fa-clock"></i>
+                            <?php echo htmlspecialchars($activity['time']); ?> | <?php echo htmlspecialchars($activity['details']); ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+
+    <!-- Feedback Section -->
+    <div class="feedback-section">
+        <h3>User Feedback</h3>
+        <?php if ($feedbackMsg): ?>
+            <div class="alert alert-success"><?php echo $feedbackMsg; ?></div>
+        <?php endif; ?>
+        
+        <?php if (empty($allFeedbacks)): ?>
+            <p class="text-muted">No feedback available</p>
+        <?php else: ?>
+            <div class="feedback-grid">
                 <?php foreach ($allFeedbacks as $fb): ?>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card h-100 mb-3">
-                            <div class="card-body">
-                                <div class="mb-2">
-                                    <?php for ($i = 1; $i <= 5; $i++): ?>
-                                        <span style="color:<?php echo $i <= $fb['rating'] ? '#ffc107' : '#e4e5e9'; ?>; font-size:1.2em;">★</span>
-                                    <?php endfor; ?>
-                                </div>
-                                <p class="mb-1"><?php echo nl2br(htmlspecialchars($fb['feedback'])); ?></p>
-                                <div class="text-muted small mb-2">Posted on <?php echo htmlspecialchars($fb['date']); ?><?php 
-                                    if (is_numeric($fb['user']) && isset($userNames[$fb['user']]) && $userNames[$fb['user']]) {
-                                        echo ' &ndash; ' . htmlspecialchars($userNames[$fb['user']]);
-                                    } elseif (!is_numeric($fb['user'])) {
-                                        echo ' &ndash; Guest';
-                                    }
-                                ?></div>
-                                <form method="POST" action="" onsubmit="return confirm('Delete this feedback?');">
-                                    <input type="hidden" name="delete_feedback_date" value="<?php echo htmlspecialchars($fb['date']); ?>">
-                                    <input type="hidden" name="delete_feedback_user" value="<?php echo htmlspecialchars($fb['user']); ?>">
-                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                </form>
-                            </div>
+                    <div class="feedback-card">
+                        <div class="feedback-rating">
+                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                                <span style="color:<?php echo $i <= $fb['rating'] ? '#ffc107' : '#e4e5e9'; ?>; font-size:1.1em;">★</span>
+                            <?php endfor; ?>
+                        </div>
+                        <div class="feedback-text"><?php echo htmlspecialchars($fb['feedback']); ?></div>
+                        <div class="feedback-meta">
+                            <?php echo htmlspecialchars($fb['date']); ?>
+                            <?php if (is_numeric($fb['user']) && isset($userNames[$fb['user']]) && $userNames[$fb['user']]): ?>
+                                - <?php echo htmlspecialchars($userNames[$fb['user']]); ?>
+                            <?php elseif (!is_numeric($fb['user'])): ?>
+                                - Guest
+                            <?php endif; ?>
+                        </div>
+                        <div class="feedback-actions">
+                            <form method="POST" action="" onsubmit="return confirm('Delete this feedback?');" style="display:inline;">
+                                <input type="hidden" name="delete_feedback_date" value="<?php echo htmlspecialchars($fb['date']); ?>">
+                                <input type="hidden" name="delete_feedback_user" value="<?php echo htmlspecialchars($fb['user']); ?>">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
-        </div>
+        <?php endif; ?>
     </div>
 </div>
-<script>
-    // Optionally, activate the first tab on page load
-    var triggerTabList = [].slice.call(document.querySelectorAll('#adminTab button'));
-    triggerTabList.forEach(function (triggerEl) {
-        triggerEl.addEventListener('click', function (event) {
-            event.preventDefault();
-            var tabTrigger = new bootstrap.Tab(triggerEl);
-            tabTrigger.show();
-        });
-    });
-</script>
+
 <?php include '../includes/footer.php'; ?> 
