@@ -14,25 +14,6 @@ A comprehensive job portal web application connecting students with employers. B
 - **Project Type**: Web Application Development
 - **Technology Stack**: PHP, MySQL, Bootstrap 5
 
-## 📸 Screenshots
-
-<details>
-<summary>Click to view screenshots</summary>
-
-### Homepage
-![Homepage](screenshots/homepage.png)
-
-### Job Search
-![Job Search](screenshots/job-search.png)
-
-### Admin Dashboard
-![Admin Dashboard](screenshots/admin-dashboard.png)
-
-### User Profile
-![User Profile](screenshots/user-profile.png)
-
-</details>
-
 ## 🎯 Features
 
 ### For Students
@@ -217,13 +198,8 @@ This project was developed as part of my CP2 Capstone Project. I learned a lot a
 - Responsive web design with Bootstrap
 - Project management and documentation
 
-The development process took approximately [X] weeks, with challenges including:
+The development process took approximately 12 weeks, with challenges including:
 - Implementing secure user authentication
 - Designing an intuitive user interface
 - Optimizing database queries for performance
 - Ensuring cross-browser compatibility
-
-I'm particularly proud of the job recommendation system and the admin dashboard features.
-
----
-⭐ **Star this repository if you find it helpful!** 
